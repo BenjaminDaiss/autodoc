@@ -58,6 +58,38 @@ function App() {
   // ── Project creation ───────────────────────────────────────────────────────
   const [newProjectName, setNewProjectName] = useState('');
 
+  // ── Auto-save state ────────────────────────────────────────────────────────
+  const [autoSavingProjects, setAutoSavingProjects] = useState(new Set());
+
+  // ── Sidebar resizing ────────────────────────────────────────────────────────
+  const [sidebarWidth, setSidebarWidth] = useState(240);
+  const [isResizing, setIsResizing] = useState(false);
+
+  const handleMouseDown = () => {
+    setIsResizing(true);
+  };
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e) => {
+      const newWidth = Math.max(150, Math.min(e.clientX, 600)); // Min 150px, max 600px
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
   // ── Load projects + templates on mount ────────────────────────────────────
   useEffect(() => {
     async function init() {
@@ -98,12 +130,6 @@ function App() {
       return; 
     }
     
-    // Load the correct template for this project
-    const templateId = selectedProject.template_id || BUILTIN_TEMPLATE_ID;
-    if (templateId !== activeTemplateId) {
-      switchTemplate(templateId);
-    }
-    
     // Load entries for this project
     entriesApi.list(selectedProject.id)
       .then(setEntries)
@@ -113,10 +139,37 @@ function App() {
     if (selectedProject.form_data) {
       setFormData(selectedProject.form_data);
     } else {
+      // Initialize with current template's fields
       setFormData(buildInitialFormData(activeFieldConfig));
     }
     setPdfUrl(null);
-  }, [selectedProject, activeTemplateId]);
+  }, [selectedProject, activeFieldConfig]);
+
+  // ── Auto-save project when formData changes ────────────────────────────────
+  const saveProjectToBackend = useCallback(async () => {
+    if (!selectedProject) return;
+    
+    try {
+      setAutoSavingProjects(prev => new Set([...prev, selectedProject.id]));
+      const updated = await projectsApi.update(selectedProject.id, {
+        form_data: formData,
+      });
+      setProjects(prev => prev.map(p => p.id === updated.id ? updated : p));
+      setSelectedProject(updated);
+      setAutoSavingProjects(prev => {
+        const next = new Set(prev);
+        next.delete(selectedProject.id);
+        return next;
+      });
+    } catch (e) {
+      console.error('Auto-save failed:', e);
+      setAutoSavingProjects(prev => {
+        const next = new Set(prev);
+        next.delete(selectedProject.id);
+        return next;
+      });
+    }
+  }, [selectedProject, formData]);
 
   // ── Switch active template ─────────────────────────────────────────────────
   const switchTemplate = useCallback(async (templateId) => {
@@ -125,7 +178,13 @@ function App() {
       const tpl = await templatesApi.get(templateId);
       setActiveTemplate(tpl);
       setActiveFieldConfig(tpl.field_config || []);
-      setFormData(buildInitialFormData(tpl.field_config));
+      
+      // If a project is selected, preserve its form data
+      // Otherwise, initialize fresh form data for this template
+      if (!selectedProject) {
+        setFormData(buildInitialFormData(tpl.field_config));
+      }
+      // If project is selected, formData persists (it's in the project's form_data)
     } catch (e) {
       setApiError(e.message);
       return;
@@ -134,7 +193,7 @@ function App() {
     setCurrentEntryId(null);
     setCurrentEntryName('');
     setSaveEntryName('');
-  }, []);
+  }, [selectedProject]);
 
   // ── Project CRUD ───────────────────────────────────────────────────────────
   const handleCreateProject = async () => {
@@ -145,8 +204,8 @@ function App() {
       setProjects(prev => [project, ...prev]);
       setNewProjectName('');
       setSelectedProject(project);
-      // Reset form for new project
-      setFormData(buildInitialFormData(activeFieldConfig));
+      // Project is created with form_data initialized by backend
+      // Form loading is handled by the useEffect that listens to selectedProject
       setCurrentEntryId(null);
       setCurrentEntryName('');
       setSaveEntryName('');
@@ -170,15 +229,7 @@ function App() {
   // ── Save project form data ──────────────────────────────────────────────────
   const handleSaveProject = async () => {
     if (!selectedProject) { alert('Bitte zuerst ein Projekt auswählen.'); return; }
-    try {
-      const updated = await projectsApi.update(selectedProject.id, {
-        form_data: formData,
-        template_id: activeTemplateId,
-      });
-      setProjects(prev => prev.map(p => p.id === updated.id ? updated : p));
-      setSelectedProject(updated);
-      alert('Projekt gespeichert!');
-    } catch (e) { setApiError(e.message); }
+    alert('✓ Projekt wird automatisch gespeichert!');
   };
 
   // ── Entry CRUD ─────────────────────────────────────────────────────────────
@@ -228,7 +279,13 @@ function App() {
   };
 
   const handleNewForm = () => {
-    setFormData(buildInitialFormData(activeFieldConfig));
+    // If a project is selected, reset to the project's saved form data
+    // Otherwise, reset to template defaults
+    if (selectedProject && selectedProject.form_data) {
+      setFormData(selectedProject.form_data);
+    } else {
+      setFormData(buildInitialFormData(activeFieldConfig));
+    }
     setCurrentEntryId(null);
     setCurrentEntryName('');
     setSaveEntryName('');
@@ -332,21 +389,25 @@ function App() {
         {field.type === 'text' && (
           <input id={field.code} type="text" value={value}
             onChange={e => handleInputChange(field.code, e.target.value)}
+            onBlur={saveProjectToBackend}
             placeholder={field.placeholder} disabled={field.calculated} />
         )}
         {field.type === 'number' && (
           <input id={field.code} type="number" value={value}
             onChange={e => handleInputChange(field.code, e.target.value)}
+            onBlur={saveProjectToBackend}
             placeholder={field.placeholder} min={field.min} />
         )}
         {field.type === 'date' && (
           <input id={field.code} type="date" value={value}
             onChange={e => handleInputChange(field.code, e.target.value)}
+            onBlur={saveProjectToBackend}
             disabled={field.calculated} />
         )}
         {field.type === 'select' && (
           <select id={field.code} value={value}
-            onChange={e => handleInputChange(field.code, e.target.value)}>
+            onChange={e => handleInputChange(field.code, e.target.value)}
+            onBlur={saveProjectToBackend}>
             <option value="">Bitte wählen...</option>
             {(field.options || []).map(opt => (
               <option key={opt} value={opt}>{opt}</option>
@@ -359,10 +420,10 @@ function App() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="app-shell">
+    <div className="app-shell" style={{ userSelect: isResizing ? 'none' : 'auto' }}>
 
       {/* ── Sidebar ──────────────────────────────────────────────────────── */}
-      <aside className="sidebar">
+      <aside className="sidebar" style={{ width: `${sidebarWidth}px` }}>
 
         {/* Projects */}
         <div className="sidebar-section">
@@ -394,25 +455,6 @@ function App() {
           </ul>
         </div>
 
-        {/* Entries */}
-        {selectedProject && (
-          <div className="sidebar-section">
-            <h3>Einträge – {selectedProject.name}</h3>
-            <ul className="sidebar-list">
-              {entries.map(e => (
-                <li key={e.id}
-                  className={`sidebar-list-item ${currentEntryId === e.id ? 'active' : ''}`}
-                  onClick={() => handleLoadEntry(e)}>
-                  <span className="item-label">{e.name}</span>
-                  <button className="btn-icon-danger"
-                    onClick={ev => { ev.stopPropagation(); handleDeleteEntry(e); }}>×</button>
-                </li>
-              ))}
-              {entries.length === 0 && <li className="sidebar-empty">Noch keine Einträge</li>}
-            </ul>
-          </div>
-        )}
-
         {/* Templates */}
         <div className="sidebar-section">
           <h3>Templates</h3>
@@ -439,6 +481,7 @@ function App() {
         </div>
 
       </aside>
+      <div className="sidebar-resizer" onMouseDown={handleMouseDown} />
 
       {/* ── Main content ─────────────────────────────────────────────────── */}
       <div className="main-content">
@@ -470,11 +513,15 @@ function App() {
               )}
               {activeFieldConfig.map(field => renderField(field))}
 
-              {/* Save project button */}
+              {/* Auto-save indicator */}
               {selectedProject && (
-                <button type="button" onClick={handleSaveProject} className="btn-save-project">
-                  Projekt speichern: {selectedProject.name}
-                </button>
+                <div className="auto-save-status">
+                  {autoSavingProjects.has(selectedProject.id) ? (
+                    <span className="saving">💾 Speichern...</span>
+                  ) : (
+                    <span className="saved">✓ Auto-speichert</span>
+                  )}
+                </div>
               )}
               {!selectedProject && apiConnected && activeTemplate && (
                 <p className="hint-text">← Projekt auswählen um Formulardaten zu speichern</p>

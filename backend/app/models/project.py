@@ -9,8 +9,7 @@ class Project(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
     description = Column(String(1000), nullable=True)
-    template_id = Column(String(100), default='anschreiben_gewerk')
-    form_data = Column(Text, nullable=True)  # JSON: saved form field values
+    form_data = Column(Text, nullable=True)  # JSON: saved form field values for all templates
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

@@ -6,8 +6,42 @@ import json
 from app.database import get_db
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
 import app.crud.project as crud
+import app.crud.template as template_crud
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
+
+
+def _build_initial_form_data(db: Session) -> dict:
+    """Build form data object with all fields from all templates."""
+    form_data = {}
+    templates = template_crud.get_all(db)
+    for template in templates:
+        field_config = template_crud.deserialize_field_config(template)
+        for field in field_config:
+            # Handle both field code strings and full field definition dicts
+            if isinstance(field, str):
+                # field code as string - can't initialize with defaults
+                code = field
+            elif isinstance(field, dict):
+                code = field.get('code')
+            else:
+                continue
+            
+            if code and code not in form_data:
+                # Initialize with default value or empty string
+                if isinstance(field, dict):
+                    default_value = field.get('defaultValue')
+                    if default_value == 'today':
+                        # Will be set on frontend, use today's date as placeholder
+                        from datetime import datetime
+                        form_data[code] = datetime.now().strftime('%Y-%m-%d')
+                    elif default_value:
+                        form_data[code] = default_value
+                    else:
+                        form_data[code] = ''
+                else:
+                    form_data[code] = ''
+    return form_data
 
 
 def _to_response(project) -> dict:
@@ -16,7 +50,6 @@ def _to_response(project) -> dict:
         'id': project.id,
         'name': project.name,
         'description': project.description,
-        'template_id': project.template_id,
         'form_data': None,
         'created_at': project.created_at,
         'updated_at': project.updated_at,
@@ -37,6 +70,9 @@ def list_projects(db: Session = Depends(get_db)):
 
 @router.post("/", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 def create_project(data: ProjectCreate, db: Session = Depends(get_db)):
+    # Initialize form_data with all template fields if not provided
+    if not data.form_data:
+        data.form_data = _build_initial_form_data(db)
     project = crud.create(db, data)
     return _to_response(project)
 

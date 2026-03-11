@@ -15,14 +15,31 @@
 
 /* ── Sidebar ─────────────────────────────────────────────────────────────── */
 .sidebar {
-  width: 240px;
-  min-width: 240px;
+  min-width: 150px;
+  max-width: 600px;
   background: #1e2530;
   color: #c9d1d9;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   padding-bottom: 20px;
+  transition: width 0.05s ease;
+}
+
+.sidebar-resizer {
+  width: 8px;
+  background: #3d4a5c;
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background-color 0.2s;
+}
+
+.sidebar-resizer:hover {
+  background: #5a6b7d;
+}
+
+.sidebar-resizer:active {
+  background: #4a5f80;
 }
 
 .sidebar-section {
@@ -43,6 +60,7 @@
   display: flex;
   gap: 6px;
   margin-bottom: 8px;
+  align-items: center;
 }
 
 .sidebar-input-row input {
@@ -94,7 +112,7 @@
 
 /* ── Buttons ─────────────────────────────────────────────────────────────── */
 .btn-icon {
-  flex-shrink: 0;
+  flex: 0 0 28px;
   width: 28px;
   height: 28px;
   padding: 0;
@@ -113,7 +131,7 @@
 .btn-icon:hover { background: #2980b9; }
 
 .btn-icon-danger {
-  flex-shrink: 0;
+  flex: 0 0 auto;
   background: none;
   border: none;
   color: #586069;
@@ -190,6 +208,7 @@
   flex-direction: row;
   flex: 1;
   overflow: hidden;
+  gap: 0;
 }
 
 .form-section {
@@ -325,6 +344,33 @@
   transform: translateY(0);
 }
 
+/* Auto-save status indicator */
+.auto-save-status {
+  margin-top: 20px;
+  padding: 12px 16px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.auto-save-status .saving {
+  color: #e67e22;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.auto-save-status .saved {
+  color: #27ae60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
 .hint-text {
   margin-top: 14px;
   font-size: 13px;
@@ -337,32 +383,43 @@
   padding: 30px;
   background: #fff;
   border-left: 2px solid #e1e8ed;
-  overflow-y: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .pdf-section h2 {
   margin-bottom: 20px;
   color: #2c3e50;
   font-size: 24px;
+  flex-shrink: 0;
 }
 
 .form-group {
   margin-bottom: 20px;
+  padding-left: 12px;
+  border-left: 4px solid #e0e6ed;
+  transition: all 0.2s ease;
 }
 
+/* Required fields with empty values get red highlight */
 .form-group.required-empty {
   position: relative;
+  border-left-color: #e74c3c !important;
+  background-color: rgba(231, 76, 60, 0.08) !important;
+  padding-left: 12px;
 }
 
 .form-group.required-empty input,
 .form-group.required-empty select,
 .form-group.required-empty textarea {
-  border-color: #e74c3c;
-  background-color: #fef5f5;
+  border: 2px solid #e74c3c !important;
+  background-color: rgba(254, 245, 245, 0.8) !important;
 }
 
 .form-group.required-empty label {
   color: #e74c3c;
+  font-weight: 700;
 }
 
 .required-indicator {
@@ -471,18 +528,21 @@ button:active {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 600px;
+  flex: 1;
   background: #f8f9fa;
   border: 2px dashed #d1d9e3;
   border-radius: 8px;
   color: #7f8c8d;
   font-size: 16px;
+  min-height: 500px;
 }
 
 iframe {
   border: 1px solid #e1e8ed;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  flex: 1;
+  width: 100%;
 }
 
 /* Responsive design for smaller screens */

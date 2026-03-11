@@ -6,7 +6,6 @@ from typing import Optional, Dict, Any
 class ProjectBase(BaseModel):
     name: str
     description: Optional[str] = None
-    template_id: Optional[str] = 'anschreiben_gewerk'
     form_data: Optional[Dict[str, Any]] = None
 
 
@@ -17,7 +16,6 @@ class ProjectCreate(ProjectBase):
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    template_id: Optional[str] = None
     form_data: Optional[Dict[str, Any]] = None
 
 
