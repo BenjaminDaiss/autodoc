@@ -1,0 +1,17 @@
+from sqlalchemy import Column, Integer, String, DateTime, Text, func
+from sqlalchemy.orm import relationship
+from app.database import Base
+
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(String(1000), nullable=True)
+    template_id = Column(String(100), default='anschreiben_gewerk')
+    form_data = Column(Text, nullable=True)  # JSON: saved form field values
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    entries = relationship("Entry", back_populates="project", cascade="all, delete-orphan")

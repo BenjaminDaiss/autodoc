@@ -1,14 +1,54 @@
-# Getting Started with Create React App
+# AutoDoc - Offline PDF Generator
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Generate professional PDFs from templates that automatically adjust to variable-length content. Works completely offline in the browser!
+
+## Features
+
+- **✅ Fully Offline**: No server required, runs entirely in your browser
+- **📏 Variable Content**: Text fields automatically resize - no fixed gaps or form fields
+- **🎨 Template-Based**: Easy to customize layout in `src/pdfTemplate.js`
+- **⚡ Real-time Preview**: See changes as you type
+- **📱 Responsive**: Works on desktop and mobile
+
+## How It Works
+
+The app uses **pdfmake** to generate PDFs programmatically from templates. Unlike traditional PDF form filling (which requires fixed-size fields), this approach:
+
+1. Takes your data (name, address, notes, etc.)
+2. Runs it through a template in [src/pdfTemplate.js](src/pdfTemplate.js)
+3. Generates a complete PDF with proper layout and flow
+4. Content automatically adjusts - add 2 lines or 200 lines, it works!
+
+## Getting Started
+
+### Installation
+
+```bash
+npm install
+```
+
+### Run the App
+
+```bash
+npm start
+```
+
+Opens [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Customize the Template
+
+Edit [src/pdfTemplate.js](src/pdfTemplate.js) to change:
+- Layout and styling
+- Add new fields
+- Modify colors, fonts, and spacing
+- Add tables, images, or lists
+- Change page size or margins
 
 ## Available Scripts
 
-In the project directory, you can run:
-
 ### `npm start`
 
-Runs the app in the development mode.\
+Runs the app in development mode.\
 Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
 The page will reload when you make changes.\
